@@ -1,5 +1,5 @@
 data/*
-train_data/*
+traindata/*
 # !data/GiantMIDI-voices/
 
 .ipynb_checkpoints
