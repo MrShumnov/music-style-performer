@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.stats import norm
 from matplotlib import pyplot as plt
-
-TEST_LEN = 10000
+from numpy.lib.stride_tricks import sliding_window_view
+import tensorflow as tf
 
 BASE_NOTES_QTY = 20
 NOTE_PARAMS = 4
@@ -17,16 +17,21 @@ class Dataset:
         self.batch_size = batch_size
 
 
-    def load_dset(self, train_file, test_file):
+    def load_dset(self, train_file, test_len=1000, test_file=None):
         dset = np.load(train_file)
-        testdset = np.load(test_file)
-
-        self.train = self.process_dset(dset, True)
-        self.test = self.process_dset(testdset)
         
         np.random.seed(1)
-        np.random.shuffle(self.test)
-        self.test = self.test[:TEST_LEN * self.dataprocessor.notes_qty]
+
+        if test_file:
+            testdset = np.load(test_file)
+            np.random.shuffle(testdset)
+            testdset = testdset[:test_len * self.dataprocessor.notes_qty]
+        else:
+            testdset = dset[-test_len*self.dataprocessor.notes_qty:]
+            dset = dset[:-test_len*self.dataprocessor.notes_qty]
+            
+        self.train = self.process_dset(dset, True)
+        self.test = self.process_dset(testdset)
 
         self.vel_mess = self.dataprocessor.mess(self.test, self.dataprocessor.vel_mask)
         self.leg_mess = self.dataprocessor.mess(self.test, self.dataprocessor.leg_mask)
@@ -56,14 +61,16 @@ class DataProcessor:
         self.fnote_shift = 0 if include_first_tone else 1
 
         self.input_size = self.notes_qty * NOTE_PARAMS
+        self.dist_mask = np.array([1 if i%4==1 else 0 for i in range(self.input_size)])
         self.vel_mask = np.array([1 if i%4==2 else 0 for i in range(self.input_size)])
         self.leg_mask = np.array([1 if i%4==3 else 0 for i in range(self.input_size)])
-        self.weight_mask = self.vel_mask + self.leg_mask
+        self.weight_mask = self.vel_mask + self.leg_mask + self.dist_mask
         self.first_last_mask = np.array([1] * 4 + [0] * (self.notes_qty * 4 - 8) + [1] * 4)
 
         if not include_first_tone:
             self.input_size -= 1
             self.weight_mask = self.weight_mask[1:]
+            self.dist_mask = self.vel_mask[1:]
             self.vel_mask = self.vel_mask[1:]
             self.leg_mask = self.leg_mask[1:]
             self.first_last_mask = self.first_last_mask[1:]
@@ -75,7 +82,7 @@ class DataProcessor:
 
     def saveparams(self, filename):
         with open(filename, 'w') as f:
-            filename.write(' '.join(list(map(str, self.params))))
+            f.write(' '.join(list(map(str, self.normparams))))
 
 
     def loadparams(self, filename):
@@ -83,7 +90,6 @@ class DataProcessor:
             tone_mean, tone_std, dt_max, vel_mean, vel_std, fvel_mean, fvel_std = list(map(float, f.read().split()))
             self.normparams = (tone_mean, tone_std, dt_max, vel_mean, vel_std, fvel_mean, fvel_std)
             
-
 
     def get_features(self, dset):    
         dt = dset[..., 3].copy()
@@ -97,15 +103,30 @@ class DataProcessor:
         
         return dset
     
+
+    @tf.function
+    def preprocess_test(self, base_features, target_features):
+        data = tf.concat([base_features, target_features], -1)
+
+        data = np.squeeze(sliding_window_view(data, (self.notes_qty, 4)))
+
+        data, fnotes = self.make_relative(data)
+        data, fnotes = self.normalize(data, fnotes, False)
+
+        data = tf.reshape(data, (data.shape[0], data.shape[1] * data.shape[2]))
+        data = tf.concat((fnotes, data), axis=1)
+
+        return data
+    
     
     def make_relative(self, dset):
         dset[..., 0] = np.diff(dset[..., 0], axis=1, prepend=0)
         if not self.absolute_velocities:
             dset[..., 2] = np.diff(dset[..., 2], axis=1, prepend=0)
         
-        first_notes = np.delete(dset[:, 0, :], obj=0, axis=-1)
+        dset = np.delete(dset, obj=0, axis=1)
         if not self.include_first_tone:
-            dset = np.delete(dset, obj=0, axis=1)
+            first_notes = np.delete(dset[:, 0, :], obj=0, axis=-1)
         
         return dset, first_notes
     
@@ -127,9 +148,7 @@ class DataProcessor:
         return dset, fnotes
 
 
-    def normalize(self, dset, fnotes, calculate_params):
-        dset = dset.copy()
-        
+    def normalize(self, dset, fnotes, calculate_params=False):        
         if not calculate_params:
             tone_mean, tone_std, dt_max, vel_mean, vel_std, fvel_mean, fvel_std = self.normparams
         else:
@@ -181,10 +200,10 @@ class DataProcessor:
     
 
     def validate(self, vel_true_predict, leg_true_predict, vel_mess_predict, leg_mess_predict, figpath=None):
-        vel_groups = [(vel_true_predict[i:i+TEST_LEN], vel_mess_predict[i:i+TEST_LEN]) for i in range(0, len(self.test), TEST_LEN)]
-        leg_groups = [(leg_true_predict[i:i+TEST_LEN], leg_mess_predict[i:i+TEST_LEN]) for i in range(0, len(self.test), TEST_LEN)]
+        vel_groups = [(vel_true_predict[i:i+TEST_LEN], vel_mess_predict[i:i+TEST_LEN]) for i in range(0, len(vel_true_predict), TEST_LEN)]
+        leg_groups = [(leg_true_predict[i:i+TEST_LEN], leg_mess_predict[i:i+TEST_LEN]) for i in range(0, len(leg_true_predict), TEST_LEN)]
 
-        x = list(range(1, self.dataprocessor.notes_qty + 1))
+        x = list(range(1, self.notes_qty + 1))
         vel_y_mean = []
         vel_y_var = []
         leg_y_mean = []
@@ -193,7 +212,7 @@ class DataProcessor:
         vel_diffs = []
         leg_diffs = []
 
-        for i in range(self.dataprocessor.notes_qty):
+        for i in range(self.notes_qty):
             vel_diff = vel_groups[i][1] - vel_groups[i][0]
             vel_diffs.append(vel_diff)
             
@@ -224,7 +243,7 @@ class DataProcessor:
 
         idxs = [(i, j) for i in range(1, 3) for j in range(0, 2)]
         for i in range(4):
-            n = int((self.dataprocessor.notes_qty - 1) * i / 3)
+            n = int((self.notes_qty - 1) * i / 3)
 
             axs[idxs[i][0]][idxs[i][1]].title.set_text(f'Diff {n + 1}')
             axs[idxs[i][0]][idxs[i][1]].hist(vel_diffs[n], bins=100, label='velocity', alpha=0.5)
@@ -236,3 +255,4 @@ class DataProcessor:
             plt.savefig(figpath)
 
         return vel_y_mean, vel_y_var, leg_y_mean, leg_y_var
+    
