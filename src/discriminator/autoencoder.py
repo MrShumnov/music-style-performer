@@ -34,9 +34,9 @@ class MLPAutoencoder(keras.Model):
         self.encoder.add(keras.layers.GaussianNoise(self.noise))
         
         for neurons, dropout in zip(self.encoder_layers, self.encoder_dropout):
+            self.encoder.add(keras.layers.Dense(neurons, activation='relu'))
             if dropout > 0:
                 self.encoder.add(keras.layers.Dropout(dropout))
-            self.encoder.add(keras.layers.Dense(neurons, activation='relu'))
         
         self.encoder.add(keras.layers.Dense(self.latent_dim, activation='tanh'))
         
@@ -47,9 +47,9 @@ class MLPAutoencoder(keras.Model):
         self.decoder.add(keras.layers.Input(shape=(self.latent_dim)))
         
         for neurons, dropout in zip(self.decoder_layers, self.decoder_dropout):
+            self.decoder.add(keras.layers.Dense(neurons, activation='relu'))
             if dropout > 0:
                 self.decoder.add(keras.layers.Dropout(dropout))
-            self.decoder.add(keras.layers.Dense(neurons, activation='relu'))
 
         self.decoder.add(keras.layers.Dense(self.input_size, activation='linear'))
 

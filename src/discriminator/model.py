@@ -50,7 +50,7 @@ class OCCModel():
         self.predict_weights_sum = tf.reduce_sum(self.predict_weights)
             
 
-    def compile(self, modelsdir, name, optimizer, loss, ckpt_epochs=1):
+    def compile(self, modelsdir, name, optimizer, loss, ckpt_epochs=1, compile_loss=True):
         self.modelsdir = modelsdir
         self.name = name
         self.optimizer = optimizer
@@ -58,7 +58,10 @@ class OCCModel():
         self.ckpt_epochs = ckpt_epochs
         self.epochs = 0
 
-        self.autoencoder.compile(optimizer=self.optimizer, loss=self.loss)
+        if compile_loss:
+            self.autoencoder.compile(optimizer=self.optimizer, loss=self.loss)
+        else:
+            self.autoencoder.compile(optimizer=self.optimizer)
 
         self.dir = self.modelsdir + '/' + self.name
         if not os.path.exists(self.dir):
@@ -93,11 +96,14 @@ class OCCModel():
     def restore(self, idx):
         self.epochs = idx * self.ckpt_epochs
         self.checkpoint.restore(self.checkpoint_dir + '/ckpt-' + str(idx))
+        
+        print(f'ckpt-{idx} loaded')
 
 
     @tf.function
-    def predict(self, x):
-        y = self.autoencoder(x, training=False)
+    def predict(self, x, y=None):
+        if y is None:
+            y = self.autoencoder(x, training=False)
     
         err = tf.reduce_sum(self.predict_weights * tf.math.square(x - y), axis=1) / self.predict_weights_sum
         # err = tf.math.sqrt(err)
@@ -119,7 +125,7 @@ class OCCModel():
             tf.keras.callbacks.TensorBoard(log_dir=self.log_dir, update_freq='batch')
         ]
 
-        self.autoencoder.fit(dataset.train,
+        self.autoencoder.fit(x=dataset.train, y=dataset.train,
                         batch_size=dataset.batch_size, epochs=self.epochs+epochs, 
                         initial_epoch=self.epochs,
                         shuffle=True,
@@ -137,6 +143,7 @@ class OCCModel():
         vel_mean, vel_var, leg_mean, leg_var = self.dataprocessor.validate(vel_true_predict, leg_true_predict,
             vel_mess_predict,
             leg_mess_predict,
+            dataset.test_len,
             self.dir + f'/validation_{epoch}.png')
         
         with open(self.dir + f'/validation_{epoch}.txt', 'w') as f:

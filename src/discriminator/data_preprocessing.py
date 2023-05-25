@@ -18,23 +18,27 @@ class Dataset:
 
 
     def load_dset(self, train_file, test_len=1000, test_file=None):
+        self.test_len = test_len
+
         dset = np.load(train_file)
         
         np.random.seed(1)
 
         if test_file:
             testdset = np.load(test_file)
-            np.random.shuffle(testdset)
-            testdset = testdset[:test_len * self.dataprocessor.notes_qty]
         else:
             testdset = dset[-test_len*self.dataprocessor.notes_qty:]
             dset = dset[:-test_len*self.dataprocessor.notes_qty]
             
         self.train = self.process_dset(dset, True)
         self.test = self.process_dset(testdset)
+        
+        self.test_len = int(len(self.test) / self.dataprocessor.notes_qty)
+        np.random.shuffle(self.test)
+        self.test = self.test[:test_len * self.dataprocessor.notes_qty]
 
-        self.vel_mess = self.dataprocessor.mess(self.test, self.dataprocessor.vel_mask)
-        self.leg_mess = self.dataprocessor.mess(self.test, self.dataprocessor.leg_mask)
+        self.vel_mess = self.dataprocessor.mess(self.test, self.dataprocessor.vel_mask, test_len)
+        self.leg_mess = self.dataprocessor.mess(self.test, self.dataprocessor.leg_mask, test_len)
 
 
     def process_dset(self, dset, calcparams=False):
@@ -190,7 +194,7 @@ class DataProcessor:
             line[mask[idxs]] = np.random.normal(mu, std, (n))
 
 
-    def mess(self, test, mask):
+    def mess(self, test, mask, TEST_LEN):
         test_messed = test.copy()[:self.notes_qty * TEST_LEN]
         mask = np.asarray(mask>0).nonzero()[0]
         for i in range(self.notes_qty):
@@ -199,7 +203,7 @@ class DataProcessor:
         return test_messed
     
 
-    def validate(self, vel_true_predict, leg_true_predict, vel_mess_predict, leg_mess_predict, figpath=None):
+    def validate(self, vel_true_predict, leg_true_predict, vel_mess_predict, leg_mess_predict, TEST_LEN, figpath=None):
         vel_groups = [(vel_true_predict[i:i+TEST_LEN], vel_mess_predict[i:i+TEST_LEN]) for i in range(0, len(vel_true_predict), TEST_LEN)]
         leg_groups = [(leg_true_predict[i:i+TEST_LEN], leg_mess_predict[i:i+TEST_LEN]) for i in range(0, len(leg_true_predict), TEST_LEN)]
 

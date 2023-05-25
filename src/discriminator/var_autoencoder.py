@@ -102,6 +102,8 @@ class MLPVarAutoencoder(keras.Model):
 
     @tf.function
     def train_step(self, data):
+        data, _ = data
+
         with tf.GradientTape() as tape:
             z, z_mean, z_log_var = self.encoder(data)
 
@@ -139,11 +141,15 @@ class MLPVarAutoencoder(keras.Model):
         kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
 
         total_loss = reconstruction_loss + kl_loss
+        
+        self.total_loss_tracker.update_state(total_loss)
+        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        self.kl_loss_tracker.update_state(kl_loss)
 
         return {
-            "loss": total_loss,
-            "reconstruction_loss": reconstruction_loss,
-            "kl_loss": kl_loss,
+            "loss": self.total_loss_tracker.result(),
+            "reconstruction_loss": self.reconstruction_loss_tracker.result(),
+            "kl_loss": self.kl_loss_tracker.result(),
         }
     
 
