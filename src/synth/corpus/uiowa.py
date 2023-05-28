@@ -64,7 +64,7 @@ def process_wave(w, sr):
     # w[0] -= np.mean(w[0])
     # w[1] -= np.mean(w[1])
     
-    _, index = librosa.effects.trim(w, top_db=40, frame_length=512, hop_length=128)
+    _, index = librosa.effects.trim(w, top_db=40, frame_length=128, hop_length=128)
     index[1] = (w.shape[1] + index[1] * 2) / 3
     w = w[:, index[0]:index[1]]
 
@@ -102,13 +102,14 @@ def process_corpus(dir, outdir, minvel, maxvel):
             sr = waves[i][t][1]
 
             wavfile.write(outdir + f'/{t}_{i}.wav', sr, np.swapaxes(wave, 0, 1))
+            # np.save(outdir + f'/{t}_{i}.npy', wave) #.astype(np.float16))
             result.append((f'{t}_{i}.wav', t, int(vel), float(vol)))
 
     return result
 
     
 dir = r'C:\Users\mrshu\reps\music-style-performer\sounds\converted'
-dbdir = r'C:\Users\mrshu\reps\music-style-performer\sounds'
+dbdir = r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav'
 
 
 def execute_sql(conn, query):
