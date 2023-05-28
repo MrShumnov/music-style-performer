@@ -89,28 +89,20 @@ def process_corpus(dir, outdir, minvel, maxvel):
         if i % 10 == 9:
             print(f'{i + 1}/{len(fnames)}')
 
-    vol_mean = [np.mean(list(vols[0].values())), None, 
-                np.mean(list(vols[2].values()))]
-    vels = [minvel, None, maxvel]
+    vol_min = np.min(list(vols[0].values()))
+    vol_max = np.max(list(vols[2].values()))
 
     result = []
 
-    for i in [0, 2]:
+    for i in range(3):
         for t in waves[i]:
-            wave = waves[i][t][0] * vol_mean[i] / vols[i][t]
+            vol = vols[i][t]
+            vel = (vol - vol_min) / (vol_max - vol_min) * (maxvel - minvel) + minvel
+            wave = waves[i][t][0]
             sr = waves[i][t][1]
-            
+
             wavfile.write(outdir + f'/{t}_{i}.wav', sr, np.swapaxes(wave, 0, 1))
-            result.append((f'{t}_{i}.wav', t, vels[i], float(vol_mean[i])))
-
-    for t in waves[1]:
-        vol = vols[1][t]
-        vel = (vol - vol_mean[0]) / (vol_mean[2] - vol_mean[0]) * (maxvel - minvel) + minvel
-        wave = waves[1][t][0]
-        sr = waves[1][t][1]
-
-        wavfile.write(outdir + f'/{t}_1.wav', sr, np.swapaxes(wave, 0, 1))
-        result.append((f'{t}_1.wav', t, int(vel), float(vol)))
+            result.append((f'{t}_{i}.wav', t, int(vel), float(vol)))
 
     return result
 
@@ -152,8 +144,6 @@ def main():
     insert_rows(conn, sql_insert_notes, data)
 
     conn.commit()
-
-
 
 
 if __name__ == '__main__':
