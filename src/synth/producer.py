@@ -65,7 +65,7 @@ class PianoSoundProducer(SoundProducer):
     def synthesis(self, shedule, duration):
         result = np.zeros((2, int((duration + 1) * self.sample_rate)))
 
-        for i, descr in enumerate(shedule[:200]):
+        for i, descr in enumerate(shedule):
             start = int(descr.start * self.sample_rate)
             end = int(descr.end * self.sample_rate) + self.fade_curve.shape[1]
 

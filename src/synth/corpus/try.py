@@ -32,28 +32,74 @@ def get_volume(w, sr):
     return np.sqrt(np.mean(w[:, :sr//2] ** 2))
 
 
-w1, sr1 = librosa.load(r'C:\Users\mrshu\reps\music-style-performer\sounds\converted\31_0.wav', mono=False, sr=None)
-w2, sr2 = librosa.load(r'C:\Users\mrshu\reps\music-style-performer\sounds\converted\31_1.wav', mono=False, sr=None)
+def rmse(arr, axis=None):
+    return np.sqrt(np.mean(arr ** 2, axis=axis))
 
-w1 = process_wave(w1, sr1)
-w2 = process_wave(w2, sr2)
+def mae(arr, axis=None):
+    return np.mean(np.abs(arr), axis=axis)
 
-plt.plot(w1[0], alpha=0.5, label='22')
-plt.plot(w2[0], alpha=0.5, label='70')
-plt.legend()
+
+def trim_start(w, sr):
+    n = 64
+
+    start = 0
+    end = (4 * sr) // n * n
+    step = (end - start) // n
+
+    while (step > 64):
+        splitted = np.split(w[:, start:end], n, axis=1)
+        s = np.stack(splitted, axis=0)
+        vol = rmse(s, (1, 2))
+
+        vol_diff = np.diff(vol)
+        
+        index = np.argmax(vol_diff)
+        start = start + index * step
+        end = start + 2 * step//n*n
+        
+        print(f'step: {step}, section: {index}-{index+1}')
+
+        if n > 4:
+            n //= 2
+
+        step = (end - start) // n
+
+    start -= int(sr * 0.01)
+
+    return start
+
+
+def trim_end(w, sr, threshold=1e-3):
+    n = 100
+    start = 5 * sr // n * n
+    end = w.shape[1] // n * n
+    step = (end - start) // n
+
+    splitted = np.split(w[:, start:end], n, axis=1)
+    s = np.stack(splitted, axis=0)
+    vol = rmse(s, (1, 2))
+    print(vol)
+    
+    index = np.argmax(vol < threshold)
+
+    print(start, end, step, index)
+
+    return start + index * step
+
+
+w1, sr1 = librosa.load(r'C:\Users\mrshu\reps\music-style-performer\sounds\converted\70_2.wav', mono=False, sr=None)
+
+w1 = w1[:, trim_start(w1, sr1):]
+
+#w1 = process_wave(w1, sr1)
+
+plt.plot(w1[0], alpha=0.5)
+plt.axvline(x=trim_start(w1, sr1))
+plt.axvline(x=trim_end(w1, sr1))
 plt.show()
 
-vol1 = get_volume(w1, sr1)
-vol2 = get_volume(w2, sr2)
-print(vol1, vol2)
-
-vol_mean = (vol1 + vol2) / 2
-w1 *= vol_mean / vol1
-w2 *= vol_mean / vol2
-print(get_volume(w1, sr1), get_volume(w2, sr2))
+w1 = (w1 * 32767).astype(np.int16)
 
 
-# wavfile.write(r'C:\Users\mrshu\reps\music-style-performer\sounds\processed\22_2.wav', sr1, np.swapaxes(w1, 0, 1))
-# wavfile.write(r'C:\Users\mrshu\reps\music-style-performer\sounds\processed\70_2.wav', sr2, np.swapaxes(w2, 0, 1))
-
+wavfile.write(r'C:\Users\mrshu\reps\music-style-performer\test\synth\test2.wav', sr1, np.swapaxes(w1, 0, 1))
 

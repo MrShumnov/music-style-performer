@@ -3,12 +3,12 @@ from synth import Synth
 from fabric import PianoFabric
 import mido
 
-mid = mido.MidiFile(r'C:\Users\mrshu\reps\music-style-performer\src\synth\sibelius_clean.mid')
+mid = mido.MidiFile(r'C:\Users\mrshu\reps\music-style-performer\test\out\0023_sibelius_satie.mid')
 
-dbsamples = DBSamples(r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav')
+dbsamples = DBSamples(r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav_1')
 fabric = PianoFabric()
 
 synth = Synth(fabric, dbsamples)
 
-synth.synth_midi(mid, 0, outfile=r'C:\Users\mrshu\reps\music-style-performer\src\synth\test_sibelius1.wav')
+synth.synth_midi(mid, 0, outfile=r'C:\Users\mrshu\reps\music-style-performer\test\synth\0023_sibelius_satie.wav')
 

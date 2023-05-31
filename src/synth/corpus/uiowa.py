@@ -42,7 +42,7 @@ def download(dir):
 
 
 def get_volume(w, sr):
-    return np.sqrt(np.mean(w[:, :sr//2] ** 2))
+    return np.sqrt(np.mean(w[:, :sr // 2] ** 2))
 
 
 def butter_highpass(cutoff, fs, order=5):
@@ -57,6 +57,37 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
     return y
 
 
+def rmse(arr, axis=None):
+    return np.sqrt(np.mean(arr ** 2, axis=axis))
+
+def trim_start(w, sr):
+    n = 64
+
+    start = 0
+    end = (4 * sr) // n * n
+    step = (end - start) // n
+
+    while (step > 64):
+        splitted = np.split(w[:, start:end], n, axis=1)
+        s = np.stack(splitted, axis=0)
+        vol = rmse(s, (1, 2))
+
+        vol_diff = np.diff(vol)
+        
+        index = np.argmax(vol_diff)
+        start = start + index * step
+        end = start + 2 * step//n*n
+
+        if n > 4:
+            n //= 2
+
+        step = (end - start) // n
+
+    start -= int(sr * 0.01)
+
+    return start    
+
+
 def process_wave(w, sr):
     w[0] = butter_highpass_filter(w[0], 10, sr)
     w[1] = butter_highpass_filter(w[1], 10, sr)
@@ -64,9 +95,9 @@ def process_wave(w, sr):
     # w[0] -= np.mean(w[0])
     # w[1] -= np.mean(w[1])
     
-    _, index = librosa.effects.trim(w, top_db=40, frame_length=128, hop_length=128)
-    index[1] = (w.shape[1] + index[1] * 2) / 3
-    w = w[:, index[0]:index[1]]
+    # _, index = librosa.effects.trim(w, top_db=40, frame_length=128, hop_length=128)
+    # index[1] = (w.shape[1] + index[1] * 2) / 3
+    w = w[:, trim_start(w, sr):]
 
     return w
 
@@ -101,6 +132,8 @@ def process_corpus(dir, outdir, minvel, maxvel):
             wave = waves[i][t][0]
             sr = waves[i][t][1]
 
+            wave = (wave * 32767).astype(np.int16)
+ 
             wavfile.write(outdir + f'/{t}_{i}.wav', sr, np.swapaxes(wave, 0, 1))
             # np.save(outdir + f'/{t}_{i}.npy', wave) #.astype(np.float16))
             result.append((f'{t}_{i}.wav', t, int(vel), float(vol)))
@@ -109,7 +142,7 @@ def process_corpus(dir, outdir, minvel, maxvel):
 
     
 dir = r'C:\Users\mrshu\reps\music-style-performer\sounds\converted'
-dbdir = r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav'
+dbdir = r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav_1'
 
 
 def execute_sql(conn, query):
