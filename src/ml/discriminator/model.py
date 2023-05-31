@@ -95,7 +95,7 @@ class OCCModel():
 
     def restore(self, idx):
         self.epochs = idx * self.ckpt_epochs
-        self.checkpoint.restore(self.checkpoint_dir + '/ckpt-' + str(idx))
+        self.checkpoint.restore(self.checkpoint_dir + '/ckpt-' + str(idx)).expect_partial()
         
         print(f'ckpt-{idx} loaded')
 
@@ -109,6 +109,16 @@ class OCCModel():
         # err = tf.math.sqrt(err)
         
         return err
+    
+
+    tf.function()
+    def encode(self, x):
+        return self.autoencoder.encoder(x, training=False)
+    
+    
+    tf.function()
+    def decode(self, x):
+        return self.autoencoder.decoder(x, training=False)
     
 
     @tf.function
@@ -140,9 +150,11 @@ class OCCModel():
         vel_mess_predict = self.predict(dataset.vel_mess).numpy()
         leg_mess_predict = self.predict(dataset.leg_mess).numpy()
 
-        vel_mean, vel_var, leg_mean, leg_var = self.dataprocessor.validate(vel_true_predict, leg_true_predict,
+        vel_mean, vel_var, leg_mean, leg_var = self.dataprocessor.validate((
+            vel_true_predict, 
+            leg_true_predict,
             vel_mess_predict,
-            leg_mess_predict,
+            leg_mess_predict),
             dataset.test_len,
             self.dir + f'/validation_{epoch}.png')
         

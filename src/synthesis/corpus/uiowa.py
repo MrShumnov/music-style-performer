@@ -6,6 +6,9 @@ import sqlite3
 from scipy import signal
 
 
+sample_rate = 44100
+
+
 def download(dir):
     from bs4 import BeautifulSoup
     import requests
@@ -40,9 +43,12 @@ def download(dir):
 
                 open(dir + f'/{tone}_{vel}.aiff', "wb").write(response.content)
 
+import pyloudnorm as pyln
+meter = pyln.Meter(sample_rate)
+
 
 def get_volume(w, sr):
-    return np.sqrt(np.mean(w[:, :sr // 2] ** 2))
+    return meter.integrated_loudness(np.swapaxes(w[:, :sr//2], 0, 1)) + np.sqrt(np.mean(w[:, :sr // 2] ** 2)) * 1000
 
 
 def butter_highpass(cutoff, fs, order=5):
@@ -60,6 +66,9 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
 def rmse(arr, axis=None):
     return np.sqrt(np.mean(arr ** 2, axis=axis))
 
+fade_in_size = int(sample_rate * 0.006)
+fade_curve = np.repeat((np.linspace(0.0, 1.0, fade_in_size) ** (1))[np.newaxis, :], 2, axis=0)
+
 def trim_start(w, sr):
     n = 64
 
@@ -67,7 +76,7 @@ def trim_start(w, sr):
     end = (4 * sr) // n * n
     step = (end - start) // n
 
-    while (step > 64):
+    while (step > 8):
         splitted = np.split(w[:, start:end], n, axis=1)
         s = np.stack(splitted, axis=0)
         vol = rmse(s, (1, 2))
@@ -83,7 +92,7 @@ def trim_start(w, sr):
 
         step = (end - start) // n
 
-    start -= int(sr * 0.01)
+    start -= fade_in_size
 
     return start    
 
@@ -98,6 +107,7 @@ def process_wave(w, sr):
     # _, index = librosa.effects.trim(w, top_db=40, frame_length=128, hop_length=128)
     # index[1] = (w.shape[1] + index[1] * 2) / 3
     w = w[:, trim_start(w, sr):]
+    w[:, :fade_in_size] *= fade_curve
 
     return w
 
@@ -108,6 +118,9 @@ def process_corpus(dir, outdir, minvel, maxvel):
     waves = [{}, {}, {}]
     vols = [{}, {}, {}]
 
+    vol_min = [1e5 for i in range(1)]
+    vol_max = [-1e5 for i in range(1)]
+
     for i, fname in enumerate(fnames):
         w, sr = librosa.load(dir + '/' + fname, mono=False, sr=None)
         w = process_wave(w, sr)
@@ -117,18 +130,23 @@ def process_corpus(dir, outdir, minvel, maxvel):
         waves[v][t] = [w, sr]
         vols[v][t] = get_volume(w, sr)
 
+        group = 0 # (t - 12) // 12
+        if v == 0 and vols[v][t] < vol_min[group]:
+            vol_min[group] = vols[v][t]
+        elif v == 2 and vols[v][t] > vol_max[group]:
+            vol_max[group] = vols[v][t]
+
         if i % 10 == 9:
             print(f'{i + 1}/{len(fnames)}')
-
-    vol_min = np.min(list(vols[0].values()))
-    vol_max = np.max(list(vols[2].values()))
 
     result = []
 
     for i in range(3):
         for t in waves[i]:
+            group = 0 # (t - 12) // 12
+
             vol = vols[i][t]
-            vel = (vol - vol_min) / (vol_max - vol_min) * (maxvel - minvel) + minvel
+            vel = (vol - vol_min[group]) / (vol_max[group] - vol_min[group]) * (maxvel - minvel) + minvel
             wave = waves[i][t][0]
             sr = waves[i][t][1]
 
@@ -142,7 +160,7 @@ def process_corpus(dir, outdir, minvel, maxvel):
 
     
 dir = r'C:\Users\mrshu\reps\music-style-performer\sounds\converted'
-dbdir = r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav_1'
+dbdir = r'C:\Users\mrshu\reps\music-style-performer\sounds\corpus_wav_lufs'
 
 
 def execute_sql(conn, query):
@@ -156,7 +174,7 @@ def insert_rows(conn, query, data):
 
 
 def main():
-    data = process_corpus(dir, dbdir, 30, 127)
+    data = process_corpus(dir, dbdir, 0, 127)
 
     conn = sqlite3.connect(dbdir + '/sounds.db')
     

@@ -1,5 +1,5 @@
-from sound import PianoSound
-from producer import PianoSoundProducer
+from synthesis.sound import PianoSound
+from synthesis.producer import PianoSoundProducer
 
 
 class InstrumentFabric:

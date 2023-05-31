@@ -1,7 +1,7 @@
 import numpy as np
-from sound import PianoSound
+from synthesis.sound import PianoSound
 import librosa
-from dbsamples import DBSamples
+from synthesis.dbsamples import DBSamples
 from scipy.io import wavfile
 
 
@@ -32,7 +32,7 @@ class PianoSoundProducer(SoundProducer):
         self.min_vel = np.min(self.velocity)
         self.max_vel = np.max(self.velocity)
 
-        self.fade_curve = np.repeat(np.linspace(1.0, 0.0, int(self.sample_rate * 0.2))[np.newaxis, :], 2, axis=0)
+        self.fade_curve = np.repeat((np.linspace(1.0, 0.0, int(self.sample_rate * 0.4)) ** 3)[np.newaxis, :], 2, axis=0)
 
 
     def get_best_sample(self, descr: PianoSound, duration: int, i):
@@ -52,7 +52,7 @@ class PianoSoundProducer(SoundProducer):
         
         if sample_w.shape[1] < duration:
             sample_w[:, -self.fade_curve.shape[1]:] *= self.fade_curve
-            sample_w = np.pad(sample_w, (0, duration - sample_w.shape[1]), axis=1)
+            sample_w = np.pad(sample_w, ((0, 0), (0, duration - sample_w.shape[1])))
         else:
             sample_w = sample_w[:, :duration]
             sample_w[:, -self.fade_curve.shape[1]:] *= self.fade_curve
@@ -74,5 +74,7 @@ class PianoSoundProducer(SoundProducer):
 
             if i % 100 == 99:
                 print(f'{i}/{len(shedule)}')
+
+        result = result / np.max(np.abs(result))
 
         return result

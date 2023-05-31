@@ -1,0 +1,12 @@
+<RCC>
+  <qresource prefix="res">
+    <file>img/conf_icon.svg</file>
+    <file>img/midi_icon.svg</file>
+    <file>img/wav_icon.svg</file>
+    <file>fonts/Raleway-Regular.ttf</file>
+    <file>fonts/Raleway-SemiBold.ttf</file>
+    <file>img/main_window.svg</file>
+    <file>img/menu_button.svg</file>
+    <file>fonts/Raleway-Medium.ttf</file>
+  </qresource>
+</RCC>

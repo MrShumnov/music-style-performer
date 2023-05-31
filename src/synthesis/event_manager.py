@@ -1,4 +1,4 @@
-from control import Control
+from synthesis.control import Control
 
 MIDI_NOTES = 127
 
@@ -10,7 +10,6 @@ class EventManager:
         self.cur_controls = {}
         self.shedule = []
         self.duration = 0
-        self.ignore = [False] * MIDI_NOTES
 
     
     def note_on(self, time, note, velocity) -> None:
@@ -19,7 +18,6 @@ class EventManager:
             prev_sound.set_end(time)
             self.shedule.append(prev_sound)
             self.duration = max(self.duration, prev_sound.end)
-            self.ignore[note] = True
 
         sound = self.fabric.create_sound(note, velocity, time)
         for cc in self.cur_controls:
@@ -32,15 +30,12 @@ class EventManager:
         sound = self.cur_sounds[note]
 
         if sound is not None:
-            if not self.ignore[note]:
-                sound.set_end(time, velocity)
+            sound.set_end(time, velocity)
 
-                if not sound.pedal:
-                    self.shedule.append(sound)
-                    self.duration = max(self.duration, sound.end)
-                    self.cur_sounds[note] = None
-            else:
-                self.ignore[note] = False
+            if not sound.pedal:
+                self.shedule.append(sound)
+                self.duration = max(self.duration, sound.end)
+                self.cur_sounds[note] = None
 
 
     def control(self, time, cc, value):        

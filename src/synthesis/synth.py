@@ -1,6 +1,6 @@
-from fabric import InstrumentFabric
-from event_manager import EventManager
-from dbsamples import DBSamples
+from synthesis.fabric import InstrumentFabric
+from synthesis.event_manager import EventManager
+from synthesis.dbsamples import DBSamples
 from scipy.io import wavfile
 import numpy as np
 

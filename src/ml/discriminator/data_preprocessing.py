@@ -3,13 +3,12 @@ from scipy.stats import norm
 from matplotlib import pyplot as plt
 from numpy.lib.stride_tricks import sliding_window_view
 import tensorflow as tf
+import mido
 
-BASE_NOTES_QTY = 20
-NOTE_PARAMS = 4
+
 MAX_NOTE_INT = 24
 MAX_NOTE_DT = 5
         
-
 
 class Dataset:
     def __init__(self, dataprocessor, batch_size):
@@ -30,8 +29,8 @@ class Dataset:
             testdset = dset[-test_len*self.dataprocessor.notes_qty:]
             dset = dset[:-test_len*self.dataprocessor.notes_qty]
             
-        self.train = self.process_dset(dset, True)
-        self.test = self.process_dset(testdset)
+        self.train = self.dataprocessor.process_dset(dset, True)
+        self.test = self.dataprocessor.process_dset(testdset)
         
         self.test_len = int(len(self.test) / self.dataprocessor.notes_qty)
         np.random.shuffle(self.test)
@@ -39,32 +38,64 @@ class Dataset:
 
         self.vel_mess = self.dataprocessor.mess(self.test, self.dataprocessor.vel_mask, test_len)
         self.leg_mess = self.dataprocessor.mess(self.test, self.dataprocessor.leg_mask, test_len)
-
-
-    def process_dset(self, dset, calcparams=False):
-        dset = self.dataprocessor.get_features(dset)
-        dset, fnotes = self.dataprocessor.make_relative(dset)
-        dset, fnotes = self.dataprocessor.filter_outliers(dset, fnotes)
-        dset, fnotes = self.dataprocessor.normalize(dset, fnotes, calcparams)
-        dset = self.dataprocessor.reshape(dset, fnotes)
-
-        return dset
     
 
 
 class DataProcessor:
+    def __init__(self, notes_qty):
+        self.notes_qty = notes_qty
+        self.normparams = None
+    
+
+    def saveparams(self, filename):
+        with open(filename, 'w') as f:
+            f.write(' '.join(list(map(str, self.normparams))))
+
+
+    def loadparams(self, filename):
+        with open(filename, 'r') as f:
+            self.normparams = list(map(float, f.read().split()))
+
+
+    def process_dset(self, dset, calcparams=False):
+        pass
+
+
+    def process_test(self, dset):
+        pass
+
+
+    def reshape_test(self, dset):
+        pass
+
+
+    def to_string(self):
+        pass
+
+
+    def mess(self, test, mask, test_len):
+        pass
+
+
+    def validate(self, predicted, test_len, figpath=None):
+        pass
+
+
+
+class DataProcessorV0(DataProcessor):
     def __init__(self, 
             notes_qty: int,
             include_first_tone: bool, 
             absolute_velocities: bool):
         
-        self.notes_qty = notes_qty 
+        super().__init__(notes_qty)
+        
         self.include_first_tone = include_first_tone 
         self.absolute_velocities = absolute_velocities 
 
         self.fnote_shift = 0 if include_first_tone else 1
 
-        self.input_size = self.notes_qty * NOTE_PARAMS
+        self.input_size = self.notes_qty * 4
         self.dist_mask = np.array([1 if i%4==1 else 0 for i in range(self.input_size)])
         self.vel_mask = np.array([1 if i%4==2 else 0 for i in range(self.input_size)])
         self.leg_mask = np.array([1 if i%4==3 else 0 for i in range(self.input_size)])
@@ -84,16 +115,42 @@ class DataProcessor:
         return f'notes qty: {self.notes_qty} \ninclude first tone: {self.include_first_tone} \nabsolute velocities: {self.absolute_velocities}'
 
 
-    def saveparams(self, filename):
-        with open(filename, 'w') as f:
-            f.write(' '.join(list(map(str, self.normparams))))
+    def process_dset(self, dset, calcparams=False):
+        dset = self.get_features(dset)
+        dset, fnotes = self.make_relative(dset)
+        dset, fnotes = self.filter_outliers(dset, fnotes)
+        dset, fnotes = self.normalize(dset, fnotes, calcparams)
+        dset = self.reshape(dset, fnotes)
 
+        return dset
+    
 
-    def loadparams(self, filename):
-        with open(filename, 'r') as f:
-            tone_mean, tone_std, dt_max, vel_mean, vel_std, fvel_mean, fvel_std = list(map(float, f.read().split()))
-            self.normparams = (tone_mean, tone_std, dt_max, vel_mean, vel_std, fvel_mean, fvel_std)
+    def process_test(self, mid, tracknum, stride):
+        line = track2line(mid.tracks[tracknum], mid.ticks_per_beat)
+        line = np.array(line)
+        
+        tones = line[..., 0].copy()
+        dists = line[..., 4].copy() / self.normparams[2]
+        line = np.delete(line, (1), axis=1)
+
+        line = self.get_features(line)
+        # line = np.squeeze(sliding_window_view(line, (self.notes_qty, 4))).copy()
+        line = window_np(line, self.notes_qty, stride)
+        dset, fnotes = self.make_relative(line)
+        dset, fnotes = self.normalize(dset, fnotes, False)
+
+        fnotes = np.concatenate([np.zeros(shape=(fnotes.shape[0], 1)), fnotes], axis=-1)
+
+        return np.concatenate([np.expand_dims(fnotes, axis=1), dset], axis=1), tones, dists
+    
+
+    def reshape_test(self, line):
+        line = np.reshape(line, [line.shape[0], line.shape[1] * line.shape[2]])
+        if not self.include_first_tone:
+            line = line[:, 1:]
             
+        return line
+
 
     def get_features(self, dset):    
         dt = dset[..., 3].copy()
@@ -106,21 +163,6 @@ class DataProcessor:
         # 3 - legato
         
         return dset
-    
-
-    @tf.function
-    def preprocess_test(self, base_features, target_features):
-        data = tf.concat([base_features, target_features], -1)
-
-        data = np.squeeze(sliding_window_view(data, (self.notes_qty, 4)))
-
-        data, fnotes = self.make_relative(data)
-        data, fnotes = self.normalize(data, fnotes, False)
-
-        data = tf.reshape(data, (data.shape[0], data.shape[1] * data.shape[2]))
-        data = tf.concat((fnotes, data), axis=1)
-
-        return data
     
     
     def make_relative(self, dset):
@@ -152,7 +194,7 @@ class DataProcessor:
         return dset, fnotes
 
 
-    def normalize(self, dset, fnotes, calculate_params=False):        
+    def normalize(self, dset, fnotes, calculate_params=False):    
         if not calculate_params:
             tone_mean, tone_std, dt_max, vel_mean, vel_std, fvel_mean, fvel_std = self.normparams
         else:
@@ -203,7 +245,9 @@ class DataProcessor:
         return test_messed
     
 
-    def validate(self, vel_true_predict, leg_true_predict, vel_mess_predict, leg_mess_predict, TEST_LEN, figpath=None):
+    def validate(self, predicted, TEST_LEN, figpath=None):
+        vel_true_predict, leg_true_predict, vel_mess_predict, leg_mess_predict = predicted
+
         vel_groups = [(vel_true_predict[i:i+TEST_LEN], vel_mess_predict[i:i+TEST_LEN]) for i in range(0, len(vel_true_predict), TEST_LEN)]
         leg_groups = [(leg_true_predict[i:i+TEST_LEN], leg_mess_predict[i:i+TEST_LEN]) for i in range(0, len(leg_true_predict), TEST_LEN)]
 
@@ -260,3 +304,83 @@ class DataProcessor:
 
         return vel_y_mean, vel_y_var, leg_y_mean, leg_y_var
     
+
+def track2line(track, ticks_per_beat):
+    line = []
+
+    time = 0
+    for m in track:
+        time += m.time / ticks_per_beat / 2
+
+        if m.type == 'note_on' and m.velocity > 0:
+            if len(line) > 0:
+                line[-1][4] = time - line[-1][1]
+            line.append([m.note, time, -1, m.velocity, -1])
+            
+        elif m.type == 'note_off' or (m.type == 'note_on' and m.velocity == 0):
+            i = 1
+            while line[-i][0] != m.note:
+                i += 1
+            
+            line[-i][2] = time - line[-i][1]
+    
+    if len(line) > 0:
+        line[-1][4] = line[-1][2]
+            
+    return line
+
+
+def rec2mid(rec_dist, rec_vel, rec_leg, base_tones, ticks_per_beat, filename=None):
+    events = []
+    time = 0
+
+    for i in range(len(rec_dist)):
+        diff = int(rec_dist[i] * ticks_per_beat * 2)
+        
+        events.append([time, int(base_tones[i]), int(rec_vel[i]), 'note_on'])
+        events.append([time + int(diff * rec_leg[i]), int(base_tones[i]), 0, 'note_off'])
+        time += diff
+        
+    events.sort(key=lambda e: e[0])
+        
+    mid = mido.MidiFile(type=0)
+    mid.ticks_per_beat = ticks_per_beat
+    track = mido.MidiTrack()
+    mid.tracks.append(track)
+
+    track.append(mido.Message(events[0][3], note=events[0][1], velocity=events[0][2], time=events[0][0]))
+    prev = 0
+
+    for e in events[1:]:
+        diff = e[0] - prev
+        prev = e[0]
+        
+        track.append(mido.Message(e[3], note=e[1], velocity=e[2], time=diff))
+
+    if filename is not None:
+        mid.save(filename)
+
+
+def window_np(line, window_size, stride):
+    length = line.shape[0]
+    windows = []
+
+    for i in range(0, length - window_size + 1, stride):
+        windows.append(line[i: i + window_size])
+    if (length - window_size) % stride != 0:
+        windows.append(line[-window_size:length])
+
+    return np.stack(windows, axis=0)
+
+    
+@tf.function()
+def window_tf(line, window_size, stride):
+    length = line.shape[0]
+    windows = []
+
+    for i in range(0, length - window_size + 1, stride):
+        windows.append(line[i: i + window_size])
+    if (length - window_size) % stride != 0:
+        windows.append(line[-window_size:length])
+
+    return tf.stack(windows, axis=0)

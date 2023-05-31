@@ -1,4 +1,4 @@
-from control import Control
+from synthesis.control import Control
 
 
 class Sound:
