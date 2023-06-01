@@ -66,7 +66,7 @@ class Performer:
         self.compiled = True
         
 
-    def style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, dt_max=0.01, outfile=None, verbose=0):
+    def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, dt_max=0.01, outfile=None, verbose=0):
         return self.styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, dt_max=dt_max, filename=outfile, verbose=verbose)
     
 

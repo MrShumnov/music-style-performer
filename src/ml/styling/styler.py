@@ -21,7 +21,7 @@ class StylingModel:
     @tf.function()
     def quality_loss(self, predicted, decoded):
         loss = self.occ.predict(predicted, decoded)
-        return tf.math.reduce_sum(loss)
+        return tf.math.reduce_mean(loss)
 
 
     @tf.function()
@@ -57,6 +57,7 @@ class StylingModel:
     
 
     def train_cycle(self, dt, vel, leg, opt, epochs=30, steps_per_epoch=500, timelimit=None, verbose=0):
+        print('Start training')
         start = time.time()
 
         for e in range(epochs):
