@@ -34,7 +34,7 @@ class StylingModel:
         lstyle = self.style_loss(encoded)
         lquality = self.quality_loss(predicted, decoded)
         
-        ltotal = self.A * lstyle + lquality 
+        ltotal = self.A * lstyle + self.B * lquality 
         
         return ltotal, lstyle, lquality
 
@@ -77,10 +77,14 @@ class StylingModel:
         return dt, vel, leg
     
 
-    def style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, dt_max=0.01, filename=None, verbose=0):
+    def style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=10, dt_max=0.01, filename=None, verbose=0, seed=101):
         self.stride = stride
         self.A = A
+        self.B = B
         self.dt_max = dt_max
+
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
 
         line_content, tones_content, dists_content = self.dp.process_test(mid_content, 0, stride)
         line_style, _, _ = self.dp.process_test(mid_style, 0, stride)
@@ -92,7 +96,7 @@ class StylingModel:
         style = self.dp.reshape_test(line_style)
         style_en = self.occ.encode(style)
         self.style_pca = self.pca.project(style_en)
-        self.style_pca = tf.reduce_mean(self.style_pca, axis=0)
+        self.style_pca = self.style_pca[0] # tf.reduce_mean(self.style_pca, axis=0) # np.median(self.style_pca, axis=0)
         self.style_pca = tf.repeat(self.style_pca[tf.newaxis, :], self.base.shape[0], axis=0)
 
         opt = tf.keras.optimizers.Adam(learning_rate=0.001)
@@ -143,7 +147,7 @@ class StylingModel:
     def reconstruct(self, dt, vel, leg):
         dist = (self.base_dists[:, tf.newaxis] + self.dt_additive(dt)) * self.dp.normparams[2]
         vel = vel * self.dp.normparams[4] + self.dp.normparams[3]
-        leg = leg + 1   
+        leg = leg + 1 
         
         return tf.reshape(dist, shape=(self.base_dists.shape[0])), \
                 tf.reshape(vel, shape=(self.base_dists.shape[0])), \

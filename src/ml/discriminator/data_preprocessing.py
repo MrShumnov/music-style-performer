@@ -334,11 +334,20 @@ def rec2mid(rec_dist, rec_vel, rec_leg, base_tones, ticks_per_beat, filename=Non
     events = []
     time = 0
 
+    rec_dist_np = rec_dist.numpy()
+    rec_vel_np = rec_vel.numpy()
+    rec_leg_np = rec_leg.numpy()
+
     for i in range(len(rec_dist)):
         diff = int(rec_dist[i] * ticks_per_beat * 2)
+
+        if rec_leg[i] < 0:
+            leg = (0.01 * ticks_per_beat * 2) / diff
+        else:
+            leg = rec_leg[i]
         
-        events.append([time, int(base_tones[i]), int(rec_vel[i]), 'note_on'])
-        events.append([time + int(diff * rec_leg[i]), int(base_tones[i]), 0, 'note_off'])
+        events.append([time, int(base_tones[i]), min(127, max(1, int(rec_vel[i]))), 'note_on'])
+        events.append([time + int(diff * leg), int(base_tones[i]), 0, 'note_off'])
         time += diff
         
     events.sort(key=lambda e: e[0])
@@ -348,14 +357,32 @@ def rec2mid(rec_dist, rec_vel, rec_leg, base_tones, ticks_per_beat, filename=Non
     track = mido.MidiTrack()
     mid.tracks.append(track)
 
-    track.append(mido.Message(events[0][3], note=events[0][1], velocity=events[0][2], time=events[0][0]))
+    track.append(mido.Message(events[0][3], note=events[0][1], velocity=events[0][2], time=events[0][0] if events[0][0] > 0 else 0))
     prev = 0
+    cur = [False] * 127
+    ignore = [False] * 127
+    cur[events[0][1]] = True
 
     for e in events[1:]:
         diff = e[0] - prev
-        prev = e[0]
-        
-        track.append(mido.Message(e[3], note=e[1], velocity=e[2], time=diff))
+
+        if e[3] == 'note_on':
+            if cur[e[1]]:
+                track.append(mido.Message('note_off', note=e[1], velocity=0, time=diff))
+                diff = 0
+                cur[e[1]] = False
+                ignore[e[1]] = True
+
+            track.append(mido.Message('note_on', note=e[1], velocity=e[2], time=diff))
+            prev = e[0]
+            cur[e[1]] = True
+        else:
+            if ignore[e[1]]:
+                ignore[e[1]] = False
+            else:
+                track.append(mido.Message(e[3], note=e[1], velocity=e[2], time=diff))
+                prev = e[0]
+                cur[e[1]] = False
 
     if filename is not None:
         mid.save(filename)

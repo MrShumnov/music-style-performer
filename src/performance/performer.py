@@ -66,16 +66,16 @@ class Performer:
         self.compiled = True
         
 
-    def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, dt_max=0.01, outfile=None, verbose=0):
-        return self.styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, dt_max=dt_max, filename=outfile, verbose=verbose)
+    def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0):
+        return self.styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose)
     
 
     def synthesize(self, mid, outfile=None):
         self.synth.synth_midi(mid, 0, outfile=outfile)
 
     
-    def synth_style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, dt_max=0.01, outfile=None, verbose=0):
-        mid = self.style(mid_content, mid_style, stride, timelimit, A, dt_max, verbose=verbose)
+    def synth_style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0):
+        mid = self.style(mid_content, mid_style, stride, timelimit, A, B, dt_max, verbose=verbose)
         sound = self.synthesize(mid, 0, outfile)
 
         return sound
