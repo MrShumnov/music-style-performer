@@ -342,7 +342,7 @@ def rec2mid(rec_dist, rec_vel, rec_leg, base_tones, ticks_per_beat, filename=Non
         diff = int(rec_dist[i] * ticks_per_beat * 2)
 
         if rec_leg[i] < 0:
-            leg = (0.01 * ticks_per_beat * 2) / diff
+            leg = (0.05 * ticks_per_beat * 2) / diff
         else:
             leg = rec_leg[i]
         

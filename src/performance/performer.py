@@ -23,7 +23,6 @@ class Performer:
         from ml.discriminator.model import OCCModel
         from ml.discriminator.data_preprocessing import DataProcessorV0
         from ml.discriminator.autoencoder import MLPAutoencoder
-        from ml.styling.styler import StylingModel
         from ml.styling.pca import PCA
         import json
         from synthesis.synth import Synth
@@ -34,29 +33,27 @@ class Performer:
         with open(configpath, 'r') as f:
             data = json.load(f)
 
-        dp = DataProcessorV0(data['data_processor']['notes_qty'],
+        self.dp = DataProcessorV0(data['data_processor']['notes_qty'],
                              data['data_processor']['include_first_tone'],
                              data['data_processor']['absolute_velocities'])
-        dp.loadparams(data['data_processor']['config_path'])
+        self.dp.loadparams(data['data_processor']['config_path'])
 
-        ae = MLPAutoencoder(dp.input_size,
+        ae = MLPAutoencoder(self.dp.input_size,
                             data['autoencoder']['latent_dim'],
                             0,
                             data['autoencoder']['encoder_layers'],
                             data['autoencoder']['encoder_dropout'],
                             data['autoencoder']['decoder_layers'],
                             data['autoencoder']['decoder_dropout'])
-        occ = OCCModel(ae,
-                       dp,
+        self.occ = OCCModel(ae,
+                       self.dp,
                        data['occ']['dist_weight'],
                        data['occ']['vel_weight'],
                        data['occ']['leg_weight'])
-        occ.load(data['occ']['checkpoint_path'])
+        self.occ.load(data['occ']['checkpoint_path'])
 
-        pca = PCA(data['pca']['pca_dim'])
-        pca.loadparams(data['pca']['config_path'])
-
-        self.styler = StylingModel(dp, occ, pca)
+        self.pca = PCA(data['pca']['pca_dim'])
+        self.pca.loadparams(data['pca']['config_path'])
 
         dbsamples = DBSamples(data['synth']['sounds_dir'])
         fabric = PianoFabric()
@@ -67,7 +64,10 @@ class Performer:
         
 
     def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0):
-        return self.styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose)
+        from ml.styling.styler import StylingModel
+        styler = StylingModel(self.dp, self.occ, self.pca)
+
+        return styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose)[0]
     
 
     def synthesize(self, mid, outfile=None):

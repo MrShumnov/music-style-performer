@@ -12,19 +12,16 @@ class StylingModel:
         self.pca = pca
 
 
-    @tf.function()
     def style_loss(self, encoded): 
         predicted_pca = self.pca.project(encoded)
         return tf.reduce_mean(tf.math.square(predicted_pca - self.style_pca))
 
 
-    @tf.function()
     def quality_loss(self, predicted, decoded):
         loss = self.occ.predict(predicted, decoded)
         return tf.math.reduce_mean(loss)
 
 
-    @tf.function()
     def overall_loss(self, dt, vel, leg):
         predicted = self.process(dt, vel, leg)
         
@@ -93,10 +90,12 @@ class StylingModel:
         self.base_tones = tones_content
         self.base_dists = dists_content
 
+        # print(line_content.shape, tones_content.shape, dists_content.shape)
+
         style = self.dp.reshape_test(line_style)
         style_en = self.occ.encode(style)
         self.style_pca = self.pca.project(style_en)
-        self.style_pca = self.style_pca[0] # tf.reduce_mean(self.style_pca, axis=0) # np.median(self.style_pca, axis=0)
+        self.style_pca = tf.reduce_mean(self.style_pca, axis=0) # np.median(self.style_pca, axis=0)
         self.style_pca = tf.repeat(self.style_pca[tf.newaxis, :], self.base.shape[0], axis=0)
 
         opt = tf.keras.optimizers.Adam(learning_rate=0.001)
@@ -114,7 +113,7 @@ class StylingModel:
         rec_dist, rec_vel, rec_leg = self.reconstruct(dt, vel, leg)
         mid = rec2mid(rec_dist, rec_vel, rec_leg, self.base_tones, mid_content.ticks_per_beat, filename)
 
-        return mid
+        return mid, (rec_dist, rec_vel, rec_leg)
 
 
     def dt_norm(self, dt):
@@ -125,7 +124,6 @@ class StylingModel:
         return tf.experimental.numpy.diff(dt, axis=0)
     
 
-    @tf.function
     def process(self, dt, vel, leg):
         dt = self.dt_additive(dt)
 
