@@ -4,15 +4,15 @@ sys.path.insert(0, r'C:\Users\mrshu\reps\music-style-performer\src')
 
 class Performer:
     def __init__(self):
-        self.style_ratio_range = [0, 1]
+        self.style_ratio_range = [0, 50]
         self.style_ratio_diff = self.style_ratio_range[1] - self.style_ratio_range[0]
-        self.style_ratio_default = 0.5
+        self.style_ratio_default = 20
 
         self.time_limit_range = [0, 5*60]
         self.time_limit_diff = self.time_limit_range[1] - self.time_limit_range[0]
         self.time_limit_default = 0
 
-        self.max_tenuto_range = [0, 0.02]
+        self.max_tenuto_range = [0, 0.04]
         self.max_tenuto_diff = self.max_tenuto_range[1] - self.max_tenuto_range[0]
         self.max_tenuto_default = 0.01
 
@@ -63,11 +63,11 @@ class Performer:
         self.compiled = True
         
 
-    def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0):
+    def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0, epochs=30):
         from ml.styling.styler import StylingModel
         styler = StylingModel(self.dp, self.occ, self.pca)
 
-        return styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose)[0]
+        return styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose, epochs=15)[0]
     
 
     def synthesize(self, mid, outfile=None):
@@ -76,6 +76,6 @@ class Performer:
     
     def synth_style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0):
         mid = self.style(mid_content, mid_style, stride, timelimit, A, B, dt_max, verbose=verbose)
-        sound = self.synthesize(mid, 0, outfile)
+        sound = self.synthesize(mid, outfile)
 
         return sound

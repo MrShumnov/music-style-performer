@@ -387,6 +387,8 @@ def rec2mid(rec_dist, rec_vel, rec_leg, base_tones, ticks_per_beat, filename=Non
     if filename is not None:
         mid.save(filename)
 
+    return mid
+
 
 def window_np(line, window_size, stride):
     length = line.shape[0]

@@ -53,7 +53,7 @@ class StylingModel:
         return ltotal, lstyle, lquality
     
 
-    def train_cycle(self, dt, vel, leg, opt, epochs=30, steps_per_epoch=500, timelimit=None, verbose=0):
+    def train_cycle(self, dt, vel, leg, opt, steps_per_epoch=500, timelimit=None, verbose=0, epochs=30):
         print('Start training')
         start = time.time()
 
@@ -74,7 +74,7 @@ class StylingModel:
         return dt, vel, leg
     
 
-    def style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=10, dt_max=0.01, filename=None, verbose=0, seed=101):
+    def style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=10, dt_max=0.01, filename=None, verbose=0, seed=101, epochs=30):
         self.stride = stride
         self.A = A
         self.B = B

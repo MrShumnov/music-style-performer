@@ -200,6 +200,9 @@ class MainWindow(QtWidgets.QWidget):
             
             self.content = content
             self.content_button.setText(os.path.basename(filename[0]))
+        else:
+            self.content = None
+            self.content_button.setText('open...')
 
 
     def btn_style_clicked(self, pos):
@@ -214,6 +217,9 @@ class MainWindow(QtWidgets.QWidget):
             
             self.style = style
             self.style_button.setText(os.path.basename(filename[0]))
+        else:
+            self.style = None
+            self.style_button.setText('open...')
 
 
     def create_label(self, text, pos, size, color='white', align=QtCore.Qt.AlignRight, shift=(0, 0)):
