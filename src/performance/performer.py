@@ -63,7 +63,7 @@ class Performer:
         self.compiled = True
         
 
-    def style(self, mid_content, mid_style, stride=32, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0, epochs=30):
+    def style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0, epochs=30):
         from ml.styling.styler import StylingModel
         styler = StylingModel(self.dp, self.occ, self.pca)
 
