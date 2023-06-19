@@ -2,8 +2,6 @@ data/*
 traindata/*
 sounds/*
 test/*
-config/*
-doc/*
 # !data/GiantMIDI-voices/
 
 .ipynb_checkpoints

@@ -1,0 +1,32 @@
+{
+    "data_processor": {
+        "type": "DataProcessorV0",
+        "notes_qty": 64,
+        "include_first_tone": false,
+        "absolute_velocities": true,
+        "config_path": "C:\\Users\\mrshu\\reps\\music-style-performer\\config\\config_0025\\norm_params.txt"
+    },
+    "autoencoder": {
+        "name": "",
+        "type": "MLPAutoEncoder",
+        "latent_dim": 64,
+        "encoder_layers": [128, 128, 64],
+        "encoder_dropout": [0, 0, 0], 
+        "decoder_layers": [64, 128, 128],
+        "decoder_dropout": [0, 0, 0]
+    },
+    "occ": {
+        "dist_weight": 4,
+        "vel_weight": 1,
+        "leg_weight": 4,
+        "checkpoint_path": "C:\\Users\\mrshu\\reps\\music-style-performer\\config\\config_0025\\ckpt-60"
+    },
+    "pca": {
+        "pca_dim": 32,
+        "config_path": "C:\\Users\\mrshu\\reps\\music-style-performer\\config\\config_0025\\pca_32.txt"
+    },
+    "synth": {
+        "type": "piano",
+        "sounds_dir": "C:\\Users\\mrshu\\reps\\music-style-performer\\sounds\\corpus_wav_lufs"
+    }
+}
