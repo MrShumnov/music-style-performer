@@ -63,7 +63,7 @@ class Performer:
         from ml.styling.styler import StylingModel
         styler = StylingModel(self.dp, self.occ, self.pca)
 
-        return styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose, epochs=15)[0]
+        return styler.style(mid_content, mid_style, stride=stride, timelimit=timelimit, A=A, B=B, dt_max=dt_max, filename=outfile, verbose=verbose, epochs=epochs)[0]
     
 
     def synthesize(self, mid, outfile=None):
