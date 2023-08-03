@@ -86,7 +86,7 @@ class OCCModel():
 
 
     def load(self, path):
-        tf.train.Checkpoint(autoencoder=self.autoencoder).restore(path)
+        tf.train.Checkpoint(autoencoder=self.autoencoder).restore(path).expect_partial()
 
 
     def save(self):

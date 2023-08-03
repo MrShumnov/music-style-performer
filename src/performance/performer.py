@@ -1,7 +1,3 @@
-import sys  
-sys.path.insert(0, r'C:\Users\mrshu\reps\music-style-performer\src')
-
-
 class Performer:
     def __init__(self):
         self.style_ratio_range = [0, 50]
