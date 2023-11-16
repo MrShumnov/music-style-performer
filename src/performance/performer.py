@@ -1,5 +1,4 @@
-import sys  
-sys.path.insert(0, r'C:\Users\mrshu\reps\music-style-performer\src')
+import os  
 
 
 class Performer:
@@ -19,7 +18,7 @@ class Performer:
         self.compiled = False
 
 
-    def compile(self, configpath):
+    def compile(self, filepath, filename, load_sounds=False):
         from ml.discriminator.model import OCCModel
         from ml.discriminator.data_preprocessing import DataProcessorV0
         from ml.discriminator.autoencoder import MLPAutoencoder
@@ -30,13 +29,13 @@ class Performer:
         from synthesis.fabric import PianoFabric
 
 
-        with open(configpath, 'r') as f:
+        with open(os.path.join(filepath, filename), 'r') as f:
             data = json.load(f)
 
         self.dp = DataProcessorV0(data['data_processor']['notes_qty'],
                              data['data_processor']['include_first_tone'],
                              data['data_processor']['absolute_velocities'])
-        self.dp.loadparams(data['data_processor']['config_path'])
+        self.dp.loadparams(os.path.join(filepath, data['data_processor']['config_path']))
 
         ae = MLPAutoencoder(self.dp.input_size,
                             data['autoencoder']['latent_dim'],
@@ -50,15 +49,16 @@ class Performer:
                        data['occ']['dist_weight'],
                        data['occ']['vel_weight'],
                        data['occ']['leg_weight'])
-        self.occ.load(data['occ']['checkpoint_path'])
+        self.occ.load(os.path.join(filepath, data['occ']['checkpoint_path']))
 
         self.pca = PCA(data['pca']['pca_dim'])
-        self.pca.loadparams(data['pca']['config_path'])
+        self.pca.loadparams(os.path.join(filepath, data['pca']['config_path']))
 
-        dbsamples = DBSamples(data['synth']['sounds_dir'])
-        fabric = PianoFabric()
+        if load_sounds:
+            dbsamples = DBSamples(data['synth']['sounds_dir'])
+            fabric = PianoFabric()
 
-        self.synth = Synth(fabric, dbsamples)
+            self.synth = Synth(fabric, dbsamples)
 
         self.compiled = True
         
@@ -71,10 +71,16 @@ class Performer:
     
 
     def synthesize(self, mid, outfile=None):
+        if self.synth is None:
+            print('Sounds are not loaded')
+
         self.synth.synth_midi(mid, 0, outfile=outfile)
 
     
     def synth_style(self, mid_content, mid_style, stride=1, timelimit=None, A=10, B=1, dt_max=0.01, outfile=None, verbose=0):
+        if self.synth is None:
+            print('Sounds are not loaded')
+            
         mid = self.style(mid_content, mid_style, stride, timelimit, A, B, dt_max, verbose=verbose)
         sound = self.synthesize(mid, outfile)
 

@@ -4,7 +4,7 @@
         "notes_qty": 64,
         "include_first_tone": false,
         "absolute_velocities": true,
-        "config_path": "C:\\Users\\mrshu\\reps\\music-style-performer\\config\\config_0025\\norm_params.txt"
+        "config_path": "norm_params.txt"
     },
     "autoencoder": {
         "name": "",
@@ -19,11 +19,11 @@
         "dist_weight": 4,
         "vel_weight": 1,
         "leg_weight": 4,
-        "checkpoint_path": "C:\\Users\\mrshu\\reps\\music-style-performer\\config\\config_0025\\ckpt-60"
+        "checkpoint_path": "ckpt-60"
     },
     "pca": {
         "pca_dim": 32,
-        "config_path": "C:\\Users\\mrshu\\reps\\music-style-performer\\config\\config_0025\\pca_32.txt"
+        "config_path": "pca_32.txt"
     },
     "synth": {
         "type": "piano",

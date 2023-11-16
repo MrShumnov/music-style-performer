@@ -162,7 +162,8 @@ class MainWindow(QtWidgets.QWidget):
         
         if filename[0]:
             try:
-                self.performer.compile(filename[0])
+                self.performer.compile(os.path.dirname(filename[0]),
+                                       os.path.basename(filename[0]))
             except Exception as e:
                 QtWidgets.QMessageBox.about(self, "Error", f"Unexpected error: \n{e}")
 
