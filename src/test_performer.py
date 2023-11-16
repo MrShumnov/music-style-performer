@@ -1,6 +1,5 @@
 from performance.performer import Performer
 import mido
-import tensorflow as tf
 
 p = Performer()
 p.compile(r'C:\Users\mrshu\reps\music-style-performer\config\config_0025', 'config.json')

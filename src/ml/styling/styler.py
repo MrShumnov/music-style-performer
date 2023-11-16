@@ -108,7 +108,7 @@ class StylingModel:
         vel = tf.Variable(velstart, dtype=tf.float32)
         leg = tf.Variable(legstart, dtype=tf.float32)
 
-        dt, vel, leg = self.train_cycle(dt, vel, leg, opt, timelimit=timelimit, verbose=verbose)
+        dt, vel, leg = self.train_cycle(dt, vel, leg, opt, timelimit=timelimit, verbose=verbose, epochs=epochs)
 
         rec_dist, rec_vel, rec_leg = self.reconstruct(dt, vel, leg)
         mid = rec2mid(rec_dist, rec_vel, rec_leg, self.base_tones, mid_content.ticks_per_beat, filename)
